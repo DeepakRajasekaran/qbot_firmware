@@ -1,16 +1,12 @@
 #include <Arduino.h>
-#include "Globals.h"
+#include "com.h"
 
 void setup() {
-  Serial.begin(9600);
-  driveSetup();
+  initCom(9600); // Initialize communication with the specified baud rate
 }
 
 void loop() {
-  // a = digitalRead(M1_ENC_1);
-  // b = digitalRead(M1_ENC_2);
-  // Serial.print(int(b)*5);
-  // Serial.print(">ticks:");
-  // Serial.println(ticks);
-  // delay(1000);
+  readCommand();    // Read the command from Serial
+  sendFeedback();   // Send feedback based on the received command
+  delay(500);       // Delay for 500ms before the next iteration
 }
