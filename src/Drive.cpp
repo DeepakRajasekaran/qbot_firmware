@@ -1,8 +1,8 @@
 #include "Drive.h"
 
 // Motor instances (adjust pins as needed)
-Motor leftMotor(2, 4, 5);     // encA, encB, PWM
-Motor rightMotor(3, 7, 6);    // encA, encB, PWM
+Motor leftMotor(2, 4, 5, 0);       // encA, encB, PWM, EEPROM address 0
+Motor rightMotor(3, 7, 6, 30);     // separate EEPROM slot
 
 static DriveMode currentMode = RUN_MODE;
 

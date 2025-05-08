@@ -1,10 +1,11 @@
 #include "motor.h"
 
-Motor::Motor(uint8_t encoderA, uint8_t encoderB, uint8_t motorPwmPin)
+Motor::Motor(uint8_t encoderA, uint8_t encoderB, uint8_t motorPwmPin, int eepromAddr)
     : encA(encoderA), encB(encoderB), pwmPin(motorPwmPin),
       kp(2.0), ki(5.0), kd(1.0),
       pid(&input, &output, &setpoint, kp, ki, kd, DIRECT),
-      tuner(&input, &output), tuning(false)
+      tuner(&input, &output), tuning(false),
+      eepromBaseAddr(eepromAddr)
 {}
 
 void Motor::init(void (*isrCallback)()) {
@@ -14,14 +15,16 @@ void Motor::init(void (*isrCallback)()) {
 
     attachInterrupt(digitalPinToInterrupt(encA), isrCallback, RISING);
 
+    loadPIDFromEEPROM();  // Load saved values
+
+    pid.SetTunings(kp, ki, kd);
     pid.SetMode(AUTOMATIC);
     pid.SetOutputLimits(0, 255);
 
-    // AutoTune configuration
-    tuner.SetControlType(1);        // PID
-    tuner.SetNoiseBand(1);          // Sensitivity
-    tuner.SetOutputStep(50);        // Aggressiveness
-    tuner.SetLookbackSec(10);       // History window
+    tuner.SetControlType(1);
+    tuner.SetNoiseBand(1);
+    tuner.SetOutputStep(50);
+    tuner.SetLookbackSec(10);
 }
 
 void Motor::handleEncoderISR() {
@@ -54,12 +57,12 @@ void Motor::runMotorAt(double rpm) {
 
 void Motor::tune() {
     tuning = true;
-    analogWrite(pwmPin, 127);  // Mid-power to start oscillation
+    analogWrite(pwmPin, 127);
 
     unsigned long start = millis();
     while (!tuner.Runtime()) {
-        updateSpeed();  // Feed encoder speed while tuning
-        if (millis() - start > 15000) break;  // Timeout
+        updateSpeed();
+        if (millis() - start > 15000) break;
     }
 
     kp = tuner.GetKp();
@@ -67,21 +70,28 @@ void Motor::tune() {
     kd = tuner.GetKd();
 
     pid.SetTunings(kp, ki, kd);
+    savePIDToEEPROM();  // Save new values
     tuning = false;
 }
 
-long Motor::getEncoderCount() const {
-    return encoderCount;
+void Motor::savePIDToEEPROM() {
+    EEPROM.put(eepromBaseAddr, kp);
+    EEPROM.put(eepromBaseAddr + sizeof(double), ki);
+    EEPROM.put(eepromBaseAddr + 2 * sizeof(double), kd);
 }
 
-double Motor::getRPM() const {
-    return input;
+void Motor::loadPIDFromEEPROM() {
+    EEPROM.get(eepromBaseAddr, kp);
+    EEPROM.get(eepromBaseAddr + sizeof(double), ki);
+    EEPROM.get(eepromBaseAddr + 2 * sizeof(double), kd);
+
+    // Optional: validate values
+    if (isnan(kp) || isnan(ki) || isnan(kd) || kp <= 0 || ki < 0 || kd < 0) {
+        kp = 2.0; ki = 5.0; kd = 1.0;  // Defaults
+    }
 }
 
-double Motor::getOutput() const {
-    return output;
-}
-
-bool Motor::isTuning() const {
-    return tuning;
-}
+long Motor::getEncoderCount() const { return encoderCount; }
+double Motor::getRPM() const { return input; }
+double Motor::getOutput() const { return output; }
+bool Motor::isTuning() const { return tuning; }
