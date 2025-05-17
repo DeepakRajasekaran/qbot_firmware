@@ -1,12 +1,16 @@
-#include <Arduino.h>
-#include "com.h"
+#include "Drive.h"
 
 void setup() {
-  initCom(9600); // Initialize communication with the specified baud rate
+    Serial.begin(9600);
+    delay(1000);
+
+    initDrive();                      // Initialize motors
+    setDriveMode(MAINTENANCE_MODE);  // Tune once
+    setDriveMode(RUN_MODE);          // Enter run mode
+
+    setTargetRPM(100, 100);          // Set target RPM for both motors
 }
 
 void loop() {
-  readCommand();    // Read the command from Serial
-  sendFeedback();   // Send feedback based on the received command
-  delay(500);       // Delay for 500ms before the next iteration
+    updateDrive();                   // Manage loop logic (PID + printing)
 }

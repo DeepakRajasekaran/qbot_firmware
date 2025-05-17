@@ -4,14 +4,14 @@
 #include <Arduino.h>
 #include <PID_v1.h>
 #include <PID_AutoTune_v0.h>
-#include <EEPROM.h>
 
 #define MAX_RPM 100.0
 #define ENCODER_PPR 2975.0
 
 class Motor {
 private:
-    uint8_t encA, encB, pwmPin;
+    uint8_t encA, encB;
+    uint8_t pwmPinFwd, pwmPinRev;
     volatile long encoderCount = 0;
     long lastEncoderCount = 0;
     unsigned long lastSpeedCalcTime = 0;
@@ -23,13 +23,15 @@ private:
     PID_ATune tuner;
     bool tuning;
 
-    int eepromBaseAddr; // EEPROM storage start
+    int eepromBaseAddr;
 
     void loadPIDFromEEPROM();
     void savePIDToEEPROM();
 
 public:
-    Motor(uint8_t encoderA, uint8_t encoderB, uint8_t motorPwmPin, int eepromAddr);
+    Motor(uint8_t encoderA, uint8_t encoderB,
+          uint8_t pwmFwd, uint8_t pwmRev,
+          int eepromAddr);
 
     void init(void (*isrCallback)());
     void handleEncoderISR();

@@ -1,7 +1,11 @@
 #include "motor.h"
+#include <EEPROM.h> // only needed in this cpp file 
 
-Motor::Motor(uint8_t encoderA, uint8_t encoderB, uint8_t motorPwmPin, int eepromAddr)
-    : encA(encoderA), encB(encoderB), pwmPin(motorPwmPin),
+Motor::Motor(uint8_t encoderA, uint8_t encoderB,
+             uint8_t pwmFwd, uint8_t pwmRev,
+             int eepromAddr)
+    : encA(encoderA), encB(encoderB),
+      pwmPinFwd(pwmFwd), pwmPinRev(pwmRev),
       kp(2.0), ki(5.0), kd(1.0),
       pid(&input, &output, &setpoint, kp, ki, kd, DIRECT),
       tuner(&input, &output), tuning(false),
@@ -11,16 +15,16 @@ Motor::Motor(uint8_t encoderA, uint8_t encoderB, uint8_t motorPwmPin, int eeprom
 void Motor::init(void (*isrCallback)()) {
     pinMode(encA, INPUT_PULLUP);
     pinMode(encB, INPUT_PULLUP);
-    pinMode(pwmPin, OUTPUT);
+    pinMode(pwmPinFwd, OUTPUT);
+    pinMode(pwmPinRev, OUTPUT);
 
     attachInterrupt(digitalPinToInterrupt(encA), isrCallback, RISING);
 
-    loadPIDFromEEPROM();  // Load saved values
+    loadPIDFromEEPROM();
 
     pid.SetTunings(kp, ki, kd);
     pid.SetMode(AUTOMATIC);
-    pid.SetOutputLimits(0, 255);
-
+    pid.SetOutputLimits(-255, 255); // allow direction control
     tuner.SetControlType(1);
     tuner.SetNoiseBand(1);
     tuner.SetOutputStep(50);
@@ -47,7 +51,15 @@ void Motor::updateSpeed() {
 void Motor::runPID() {
     if (!tuning) {
         pid.Compute();
-        analogWrite(pwmPin, output);
+
+        // Determine direction
+        if (output >= 0) {
+            analogWrite(pwmPinFwd, (int)output);
+            analogWrite(pwmPinRev, 0);
+        } else {
+            analogWrite(pwmPinFwd, 0);
+            analogWrite(pwmPinRev, (int)(output));
+        }
     }
 }
 
@@ -57,7 +69,9 @@ void Motor::runMotorAt(double rpm) {
 
 void Motor::tune() {
     tuning = true;
-    analogWrite(pwmPin, 127);
+
+    analogWrite(pwmPinFwd, 127);
+    analogWrite(pwmPinRev, 0);
 
     unsigned long start = millis();
     while (!tuner.Runtime()) {
@@ -70,8 +84,11 @@ void Motor::tune() {
     kd = tuner.GetKd();
 
     pid.SetTunings(kp, ki, kd);
-    savePIDToEEPROM();  // Save new values
+    savePIDToEEPROM();
     tuning = false;
+
+    analogWrite(pwmPinFwd, 0);
+    analogWrite(pwmPinRev, 0);
 }
 
 void Motor::savePIDToEEPROM() {
@@ -85,9 +102,8 @@ void Motor::loadPIDFromEEPROM() {
     EEPROM.get(eepromBaseAddr + sizeof(double), ki);
     EEPROM.get(eepromBaseAddr + 2 * sizeof(double), kd);
 
-    // Optional: validate values
     if (isnan(kp) || isnan(ki) || isnan(kd) || kp <= 0 || ki < 0 || kd < 0) {
-        kp = 2.0; ki = 5.0; kd = 1.0;  // Defaults
+        kp = 2.0; ki = 5.0; kd = 1.0;
     }
 }
 
