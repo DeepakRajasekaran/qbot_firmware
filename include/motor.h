@@ -6,44 +6,37 @@
 #include <PID_AutoTune_v0.h>
 
 #define MAX_RPM 100.0
-#define ENCODER_PPR 2975.0
+#define ENCODER_PPR 718.0
 
 class Motor {
-private:
-    uint8_t encA, encB;
-    uint8_t pwmPinFwd, pwmPinRev;
-    volatile long encoderCount = 0;
-    long lastEncoderCount = 0;
-    unsigned long lastSpeedCalcTime = 0;
-
-    double input = 0, output = 0, setpoint = 0;
-    double kp, ki, kd;
-
-    PID pid;
-    PID_ATune tuner;
-    bool tuning;
-
-    int eepromBaseAddr;
-
-    void loadPIDFromEEPROM();
-    void savePIDToEEPROM();
-
 public:
-    Motor(uint8_t encoderA, uint8_t encoderB,
-          uint8_t pwmFwd, uint8_t pwmRev,
-          int eepromAddr);
+    Motor(uint8_t fwd_pin, uint8_t rev_pin, uint8_t encA, uint8_t encB);
 
-    void init(void (*isrCallback)());
-    void handleEncoderISR();
-    void updateSpeed();
-    void runPID();
-    void runMotorAt(double rpm);
-    void tune();
+    volatile double currentRPM = 0.0; // Real-time RPM value
 
-    long getEncoderCount() const;
-    double getRPM() const;
-    double getOutput() const;
-    bool isTuning() const;
+    void attach();
+    void runAt(double command_rpm);
+    void tuneMotor();
+    double getRPM();
+    long getCount();
+
+    void enc_ISR();
+
+private:
+    uint8_t m_fwd_pin;
+    uint8_t m_rev_pin;
+    uint8_t m_encA;
+    uint8_t m_encB;
+
+    volatile long m_encoder_count;
+    unsigned long m_last_millis;
+
+    double m_input = 0, m_output = 0, m_setpoint = 0, m_kp = 0.0, m_ki = 0.0, m_kd = 0.0;
+    PID m_pid = PID(&m_input, &m_output, &m_setpoint, m_kp, m_ki, m_kd, DIRECT);
+
+    // Static interrupt handlers
+    static void handleInterrupt0();
+    static void handleInterrupt1();
 };
 
 #endif
