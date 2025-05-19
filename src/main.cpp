@@ -34,7 +34,7 @@ void loop() {
     // Serial.print(leftMotor.getPos());
 
     Serial.print(", Motor 2 RPM: ");
-    Serial.print(rightMotor.getRpm());
+    Serial.println(rightMotor.getRpm());
     // Serial.print(" Theta: ");
     // Serial.println(rightMotor.getPos());
 
