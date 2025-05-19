@@ -2,28 +2,7 @@
 #define GLOBALS_H
 
 #include <Arduino.h>
-#include "IOList.h"
-#include "Drive.h"
-
-const int driveMode = 0;  // 1 for position control, 2 for velocity control
-
-struct DriveData {
-    int dir;
-    int pos_cmd;
-    int pos_fbk;
-    int rpm_cmd;
-    int rpm_fbk;
-};
-
-DriveData L_drive = {0, 0, 0, 0, 0};
-DriveData R_drive = {0, 0, 0, 0, 0};
-
-uint16_t batteryPercent = 0;
-
-struct imuData {
-    float x; float y; float z;
-    float r; float p; float y;
-};
+#include "com.h"
 
 
 #endif // GLOBALS_H
@@ -68,13 +47,14 @@ struct imuData {
 
 ------------------------------------------------------------------------------------------------------------------
 
-    TASKS:
-        1. globals.h - define the data structure for the drive, imu, battery, 
-           command and feedback structures
+TASKS:
 
-        2. commmunication - implement the serial communication module for both sides ros2 and arduino
-            2.1 get data from pc and convert it into needed data type and write it in globals
-            2.2 get data from globals and convert it into needed data type and send it to pc
+        1. commmunication - implement the serial communication module for both sides ros2 and arduino
+            1.1 get data from pc and convert it into needed data type and write it in globals
+            1.2 get data from globals and convert it into needed data type and send it to pc
+            
+        2. globals.h - define the data structure for the drive, imu, battery, 
+           command and feedback structures
 
         3. stateManager - implement state machine, state transitions and state feedbacks
 
