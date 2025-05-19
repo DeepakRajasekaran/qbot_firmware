@@ -49,7 +49,7 @@ private:
 
     double m_pos_theta = 0.0;
 
-    double m_input = 0, m_output = 0, m_setpoint = 0, m_kp = 0.0, m_ki = 0.0, m_kd = 0.0;
+    double m_input = 0, m_output = 0, m_setpoint = 0, m_kp = 1.0, m_ki = 0.0, m_kd = 0.0;
     PID m_pid = PID(&m_input, &m_output, &m_setpoint, m_kp, m_ki, m_kd, DIRECT);
 
     // Static interrupt handlers
