@@ -52,23 +52,28 @@ void Motor::enc_ISR() {
         m_pos_theta = (m_encoder_count / ENCODER_PPR) * 360.0;    
     }
 
-    // Reset timing and encoder count
+    // update last_micros
     m_last_micros = current_micros;
 }
 
 void Motor::runAt(double targetRPM) {
-    
-    // Map targetRPM and m_currentRPM from -100~100 to -255~255 for PWM control directly in setpoint and input
+    // Map targetRPM to PWM setpoint (-255 to 255)
     m_setpoint = map((int)targetRPM, -100, 100, -255, 255);
 
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) // dont interrupt while this runs 
-    {
-        m_input = map((int)m_current_rpm_raw, -100, 100, -255, 255);
+    float raw_rpm;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { // Safe access to shared variable
+        raw_rpm = m_current_rpm_raw;
     }
-    
+
+    // Apply low-pass filter (Exponential Moving Average) to the raw RPM
+    const float alpha = 0.1;
+    m_current_rpm_filtered = (1 - alpha) * m_current_rpm_filtered + alpha * raw_rpm;
+
+    // Map filtered RPM to PID input
+    m_input = map((int)m_current_rpm_filtered, -100, 100, -255, 255);
+
     // Compute the PID output
     if (m_pid.Compute()) {
-        // Set direction using digitalWrite and write absolute output to PWM pin
         if (m_output > 0) {
             digitalWrite(m_fwd_pin, HIGH);
             digitalWrite(m_rev_pin, LOW);
@@ -79,6 +84,7 @@ void Motor::runAt(double targetRPM) {
         analogWrite(m_pwm_pin, abs((int)m_output));
     }
 }
+
 
 void Motor::openLoopRunAt(double targetRPM) {
     // Map targetRPM from -100~100 to -255~255 for PWM control directly in setpoint
@@ -96,7 +102,7 @@ void Motor::openLoopRunAt(double targetRPM) {
 }
 
 double Motor::getRpm() {
-    return m_current_rpm_raw; // Return the real-time RPM value
+    return m_current_rpm_filtered; // Return the real-time RPM value
 }
 
 long Motor::getCount() {
