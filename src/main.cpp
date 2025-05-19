@@ -17,7 +17,7 @@ void setup() {
 
 void loop() {
     // Define a fixed setpoint for testing
-    double command_rpm = 50.0; // Target RPM
+    double command_rpm = 100.0; // Target RPM
 
     // Run the motors with the setpoint
     leftMotor.runAt(command_rpm, OPEN_LOOP);
