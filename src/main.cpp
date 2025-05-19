@@ -28,12 +28,12 @@ void loop() {
     Serial.print(command_rpm);
 
     // Print feedback (RPM) to Serial Monitor
-    Serial.print("Motor 1 RPM: ");
+    Serial.print(", Motor 1 RPM: ");
     Serial.print(leftMotor.getRpm());
     // Serial.print(" Theta: ");
     // Serial.print(leftMotor.getPos());
 
-    Serial.print("Motor 2 RPM: ");
+    Serial.print(", Motor 2 RPM: ");
     Serial.print(rightMotor.getRpm());
     // Serial.print(" Theta: ");
     // Serial.println(rightMotor.getPos());
