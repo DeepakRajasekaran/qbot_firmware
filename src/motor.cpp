@@ -56,7 +56,7 @@ void Motor::enc_ISR() {
     m_last_micros = current_micros;
 }
 
-void Motor::runAt(double targetRPM) {
+void Motor::runAt(double targetRPM, uint8_t mode) {
     // Map targetRPM to PWM setpoint (-255 to 255)
     m_setpoint = map((int)targetRPM, -100, 100, -255, 255);
 
@@ -72,34 +72,32 @@ void Motor::runAt(double targetRPM) {
     // Map filtered RPM to PID input
     m_input = map((int)m_current_rpm_filtered, -100, 100, -255, 255);
 
-    // Compute the PID output
-    if (m_pid.Compute()) {
-        if (m_output > 0) {
+    if (mode == CLOSED_LOOP) {
+
+        if (m_pid.Compute()) {
+            if (m_output > 0) {
+                digitalWrite(m_fwd_pin, HIGH);
+                digitalWrite(m_rev_pin, LOW);
+            } else {
+                digitalWrite(m_fwd_pin, LOW);
+                digitalWrite(m_rev_pin, HIGH);
+            }
+            analogWrite(m_pwm_pin, abs((int)m_output));
+        }
+    } else if (mode == OPEN_LOOP) {
+
+        if (m_setpoint > 0) {
             digitalWrite(m_fwd_pin, HIGH);
             digitalWrite(m_rev_pin, LOW);
         } else {
             digitalWrite(m_fwd_pin, LOW);
             digitalWrite(m_rev_pin, HIGH);
         }
-        analogWrite(m_pwm_pin, abs((int)m_output));
+        analogWrite(m_pwm_pin, abs((int)m_setpoint));
     }
+
 }
 
-
-void Motor::openLoopRunAt(double targetRPM) {
-    // Map targetRPM from -100~100 to -255~255 for PWM control directly in setpoint
-    m_setpoint = map((int)targetRPM, -100, 100, -255, 255);
-    
-    // Set direction using digitalWrite and write absolute output to PWM pin
-    if (m_setpoint > 0) {
-        digitalWrite(m_fwd_pin, HIGH);
-        digitalWrite(m_rev_pin, LOW);
-    } else {
-        digitalWrite(m_fwd_pin, LOW);
-        digitalWrite(m_rev_pin, HIGH);
-    }
-    analogWrite(m_pwm_pin, abs((int)m_setpoint));
-}
 
 double Motor::getRpm() {
     return m_current_rpm_filtered; // Return the real-time RPM value
