@@ -20,8 +20,8 @@ void loop() {
     double command_rpm = 100.0; // Target RPM
 
     // Run the motors with the setpoint
-    leftMotor.openLoopRunAt(command_rpm);
-    rightMotor.openLoopRunAt(command_rpm);
+    leftMotor.runAt(command_rpm, OPEN_LOOP);
+    rightMotor.runAt(command_rpm, OPEN_LOOP);
 
     // Print feedback (RPM) to Serial Monitor
     Serial.print("Motor 1 RPM: ");
