@@ -23,6 +23,8 @@ public:
     void attach();
     void runAt(double targetRpm, uint8_t mode);
     void tuneMotor();
+    void setTuningParams(double kp, double ki, double kd);
+    double filter(double alpha, double input);
 
     // Getters
     double getRpm();

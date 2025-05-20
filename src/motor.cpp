@@ -68,8 +68,8 @@ void Motor::runAt(double targetRPM, uint8_t mode) {
     }
 
     // low-pass filter (Exponential Moving Average)
-    const float alpha = 0.1;
-    m_current_rpm_filtered = (1 - alpha) * m_current_rpm_filtered + alpha * raw_rpm;
+    const float alpha = 0.3;
+    m_current_rpm_filtered = filter(alpha, raw_rpm);
 
     m_input = map((int)m_current_rpm_filtered, -100, 100, -255, 255);
 
@@ -84,6 +84,18 @@ void Motor::runAt(double targetRPM, uint8_t mode) {
         setDirection(m_setpoint);
         analogWrite(m_pwm_pin, abs((int)m_setpoint));
     }
+}
+
+double Motor::filter(double alpha, double input) {
+    return (1 - alpha) * m_current_rpm_filtered + alpha * input;
+}
+
+void Motor::setTuningParams(double kp, double ki, double kd) {
+    m_kp = kp;
+    m_ki = ki;
+    m_kd = kd;
+
+    m_pid.SetTunings(m_kp, m_ki, m_kd);
 }
 
 void Motor::setDirection(double output){
