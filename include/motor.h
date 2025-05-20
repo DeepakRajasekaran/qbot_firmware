@@ -24,12 +24,14 @@ public:
     void runAt(double targetRpm, uint8_t mode);
     void tuneMotor();
     void setTuningParams(double kp, double ki, double kd);
-    double filter(double alpha, double input);
+    double epmFilter(double alpha, double input);
+    double movingAverageFilter(double input, int windowSize);
 
     // Getters
     double getRpm();
     long getCount();
     double getPos();
+    unsigned int getControlCommand();
 
     
 private:

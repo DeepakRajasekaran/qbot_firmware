@@ -69,7 +69,8 @@ void Motor::runAt(double targetRPM, uint8_t mode) {
 
     // low-pass filter (Exponential Moving Average)
     const float alpha = 0.3;
-    m_current_rpm_filtered = filter(alpha, raw_rpm);
+    const int windowSize = 5;
+    m_current_rpm_filtered = movingAverageFilter(m_current_rpm_raw, windowSize);
 
     m_input = map((int)m_current_rpm_filtered, -100, 100, -255, 255);
 
@@ -86,8 +87,37 @@ void Motor::runAt(double targetRPM, uint8_t mode) {
     }
 }
 
-double Motor::filter(double alpha, double input) {
+double Motor::epmFilter(double alpha, double input) {
     return (1 - alpha) * m_current_rpm_filtered + alpha * input;
+}
+
+double Motor::movingAverageFilter(double input, int windowSize) {
+    static double* window = nullptr;
+    static int currentWindowSize = 0;
+    static int index = 0;
+    static int count = 0;
+
+    if (window == nullptr || currentWindowSize != windowSize) {
+        if (window != nullptr) {
+            delete[] window;
+        }
+        window = new double[windowSize];
+        for (int i = 0; i < windowSize; ++i) window[i] = 0.0;
+        currentWindowSize = windowSize;
+        index = 0;
+        count = 0;
+    }
+
+    window[index] = input;
+    index = (index + 1) % windowSize;
+    if (count < windowSize) count++;
+
+    double sum = 0;
+    for (int i = 0; i < count; ++i) {
+        sum += window[i];
+    }
+
+    return sum / count;
 }
 
 void Motor::setTuningParams(double kp, double ki, double kd) {
