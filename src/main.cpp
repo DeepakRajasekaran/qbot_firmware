@@ -13,7 +13,9 @@ void setup() {
     rightMotor.attach();
 
     Serial.println("Motors initialized.");
-}
+
+    leftMotor.setTuningParams(2.0, 5.0, 1.0); // kp, ki, kd for left motor
+    rightMotor.setTuningParams(2.0, 5.0, 1.0); // kp, ki, kd for right motor
 
 void loop() {
     // Define a fixed setpoint for testing
