@@ -4,7 +4,7 @@
 static Motor* motorInstances[2] = {nullptr, nullptr};
 
 Motor::Motor(uint8_t type, uint8_t pwm_pin, uint8_t in1, uint8_t in2, uint8_t encA, uint8_t encB)
-    :  m_type(type), m_pwm_pin(pwm_pin), m_in1(in1), m_in2(in2), m_encA(encA), m_encB(encB), m_encoder_count(0), m_last_micros(0) {}
+    : m_type(type), m_pwm_pin(pwm_pin), m_in1(in1), m_in2(in2), m_encA(encA), m_encB(encB), m_encoder_count(0), m_last_micros(0) {}
 
 void Motor::attach() {
     
@@ -61,16 +61,16 @@ void Motor::runAt(double targetRPM, uint8_t mode) {
 
     m_setpoint = map((int)targetRPM, -100, 100, -255, 255);
 
-    float raw_rpm;
+    float raw_rpm = 0.0;
 
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { // Safe access to shared variable
         raw_rpm = m_current_rpm_raw;
     }
 
     // low-pass filter (Exponential Moving Average)
-    const float alpha = 0.3;
+    // const float alpha = 0.3;
     const int windowSize = 5;
-    m_current_rpm_filtered = movingAverageFilter(m_current_rpm_raw, windowSize);
+    m_current_rpm_filtered = movingAverageFilter(raw_rpm, windowSize);
 
     m_input = map((int)m_current_rpm_filtered, -100, 100, -255, 255);
 
