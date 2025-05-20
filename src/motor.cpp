@@ -3,24 +3,21 @@
 // Static array to store Motor instances for interrupt handling
 static Motor* motorInstances[2] = {nullptr, nullptr};
 
-Motor::Motor(uint8_t pwm_pin, uint8_t fwd_pin, uint8_t rev_pin, uint8_t encA, uint8_t encB)
-    : m_pwm_pin(pwm_pin), m_fwd_pin(fwd_pin), m_rev_pin(rev_pin), m_encA(encA), m_encB(encB), m_encoder_count(0), m_last_micros(0) {}
+Motor::Motor(uint8_t type, uint8_t pwm_pin, uint8_t in1, uint8_t in2, uint8_t encA, uint8_t encB)
+    :  m_type(type), m_pwm_pin(pwm_pin), m_in1(in1), m_in2(in2), m_encA(encA), m_encB(encB), m_encoder_count(0), m_last_micros(0) {}
 
 void Motor::attach() {
-    // Set forward and reverse pins as output
+    
     pinMode(m_pwm_pin, OUTPUT);
-    pinMode(m_fwd_pin, OUTPUT);
-    pinMode(m_rev_pin, OUTPUT);
+    pinMode(m_in1, OUTPUT);
+    pinMode(m_in2, OUTPUT);
 
-    // Set encoder pins as input
     pinMode(m_encA, INPUT);
     pinMode(m_encB, INPUT);
 
-    // Initialize PID controller
     m_pid.SetMode(AUTOMATIC);
-    m_pid.SetOutputLimits(-255, 255); // Limit output to PWM range
+    m_pid.SetOutputLimits(-255, 255); 
 
-    // Initialize timing
     m_last_micros = micros();
 
     // Register this instance in the static array
@@ -34,10 +31,15 @@ void Motor::attach() {
 }
 
 void Motor::enc_ISR() {
-    // Increment or decrement encoder count based on encB state
-    m_encoder_count += (digitalRead(m_encB) ? 1 : -1);
 
-    // Calculate current RPM
+    if (m_type == DIRECT) {
+        m_encoder_count += (digitalRead(m_encB) ? 1 : -1);
+    } else if (m_type == INVERSE) {
+        m_encoder_count += (digitalRead(m_encB) ? -1 : 1);
+    }
+
+    // m_encoder_count += (digitalRead(m_encB) ? 1 : -1);
+
     unsigned long current_micros = micros();
     unsigned long time_elapsed = current_micros - m_last_micros;
 
@@ -52,52 +54,57 @@ void Motor::enc_ISR() {
         m_pos_theta = (m_encoder_count / ENCODER_PPR) * 360.0;    
     }
 
-    // update last_micros
     m_last_micros = current_micros;
 }
 
 void Motor::runAt(double targetRPM, uint8_t mode) {
-    // Map targetRPM to PWM setpoint (-255 to 255)
+
     m_setpoint = map((int)targetRPM, -100, 100, -255, 255);
 
     float raw_rpm;
+
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { // Safe access to shared variable
         raw_rpm = m_current_rpm_raw;
     }
 
-    // Apply low-pass filter (Exponential Moving Average) to the raw RPM
+    // low-pass filter (Exponential Moving Average)
     const float alpha = 0.1;
     m_current_rpm_filtered = (1 - alpha) * m_current_rpm_filtered + alpha * raw_rpm;
 
-    // Map filtered RPM to PID input
     m_input = map((int)m_current_rpm_filtered, -100, 100, -255, 255);
 
     if (mode == CLOSED_LOOP) {
 
         if (m_pid.Compute()) {
-            if (m_output > 0) {
-                digitalWrite(m_fwd_pin, HIGH);
-                digitalWrite(m_rev_pin, LOW);
-            } else {
-                digitalWrite(m_fwd_pin, LOW);
-                digitalWrite(m_rev_pin, HIGH);
-            }
+            setDirection(m_output);
             analogWrite(m_pwm_pin, abs((int)m_output));
         }
     } else if (mode == OPEN_LOOP) {
 
-        if (m_setpoint > 0) {
-            digitalWrite(m_fwd_pin, HIGH);
-            digitalWrite(m_rev_pin, LOW);
-        } else {
-            digitalWrite(m_fwd_pin, LOW);
-            digitalWrite(m_rev_pin, HIGH);
-        }
+        setDirection(m_setpoint);
         analogWrite(m_pwm_pin, abs((int)m_setpoint));
     }
-
 }
 
+void Motor::setDirection(double output){
+    if (m_type == DIRECT) {
+        if (output > 0) {               // Forward
+            digitalWrite(m_in1, HIGH);
+            digitalWrite(m_in2, LOW);
+        } else {
+            digitalWrite(m_in1, LOW);   // Reverse
+            digitalWrite(m_in2, HIGH);
+        }
+    } else if (m_type == INVERSE) {
+        if (output > 0) {
+            digitalWrite(m_in1, LOW);   // Forward
+            digitalWrite(m_in2, HIGH);
+        } else {
+            digitalWrite(m_in1, HIGH);  // Reverse
+            digitalWrite(m_in2, LOW);
+        }
+    }
+}
 
 double Motor::getRpm() {
     return m_current_rpm_filtered; // Return the real-time RPM value

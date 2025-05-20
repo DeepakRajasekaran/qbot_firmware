@@ -9,12 +9,16 @@
 #define MAX_RPM 100.0
 #define ENCODER_PPR 718.0
 
-#define OPEN_LOOP 0
-#define CLOSED_LOOP 1
+#define DIRECT 0
+#define INVERSE 1
+
+#define OPEN_LOOP 2
+#define CLOSED_LOOP 3
+
 
 class Motor {
 public:
-    Motor(uint8_t pwm_pin, uint8_t fwd_pin, uint8_t rev_pin, uint8_t encA, uint8_t encB);
+    Motor(uint8_t type, uint8_t pwm_pin, uint8_t in1, uint8_t in2, uint8_t encA, uint8_t encB);
 
     void attach();
     void runAt(double targetRpm, uint8_t mode);
@@ -29,12 +33,15 @@ public:
 private:
     //speed control
     void enc_ISR();
+    void setDirection(double output);
 
     uint8_t m_pwm_pin;
 
+    uint8_t m_type; 
+
     //direction control
-    uint8_t m_fwd_pin;
-    uint8_t m_rev_pin;
+    uint8_t m_in1;
+    uint8_t m_in2;
 
     //feedback
     uint8_t m_encA;

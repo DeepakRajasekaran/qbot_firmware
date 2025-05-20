@@ -1,8 +1,8 @@
 #include "motor.h"
 
 // Create two motor instances
-Motor leftMotor(A0, 6, 7, 2, 4); // Motor 1: pwm = a0, fwd=6, rev=7, encA=2, encB=4
-Motor rightMotor(A1, 8, 9, 3, 5); // Motor 2: pwm = a1, fwd=8, rev=9, encA=3, encB=5
+Motor leftMotor(DIRECT, A0, 6, 7, 2, 4); // Motor 1: pwm = a0, in1=6, in2=7, encA=2, encB=4
+Motor rightMotor(INVERSE, A1, 8, 9, 3, 5); // Motor 2: pwm = a1, in1=8, in2=9, encA=3, encB=5
 
 void setup() {
     Serial.begin(9600); // Initialize Serial communication
@@ -20,8 +20,8 @@ void loop() {
     double command_rpm = 100.0; // Target RPM
 
     // Run the motors with the setpoint
-    leftMotor.runAt(command_rpm, OPEN_LOOP);
-    rightMotor.runAt(command_rpm, OPEN_LOOP);
+    leftMotor.runAt(command_rpm, OPEN_LOOP); // run at ___rpm in ___mode
+    rightMotor.runAt(command_rpm, OPEN_LOOP); 
 
     Serial.print(">");
     Serial.print("Command RPM: ");
