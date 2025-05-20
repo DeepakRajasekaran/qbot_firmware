@@ -149,7 +149,7 @@ void Motor::setDirection(double output){
 }
 
 double Motor::getRpm() {
-    return m_current_rpm_filtered; // Return the real-time RPM value
+    return m_current_rpm_raw; // Return the real-time RPM value
 }
 
 long Motor::getCount() {
