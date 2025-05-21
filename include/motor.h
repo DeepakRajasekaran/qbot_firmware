@@ -7,7 +7,7 @@
 #include <util/atomic.h>
 #include <EEPROM.h>
 
-#define MAX_RPM 100.0
+#define MAX_RPM 80.0
 #define ENCODER_PPR 718.0
 
 #define DIRECT 0

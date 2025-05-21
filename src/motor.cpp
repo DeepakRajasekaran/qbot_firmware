@@ -133,11 +133,15 @@ void Motor::tuneMotor() {
     double targetRPM = 0;
 
     while (tuning) {
-        // Increment the target RPM in steps
-        targetRPM += stepSize;
-        if (targetRPM > MAX_RPM) {
+        // Increment the target RPM in steps only after 1 minute
+        static unsigned long lastStepChange = start;
+        if (millis() - lastStepChange > 60000) { // 1 minute has passed
+            targetRPM += stepSize;
+            lastStepChange = millis();
+            if (targetRPM > MAX_RPM) {
             tuning = false; // Stop tuning when the max RPM is reached
             break;
+            }
         }
 
         Serial.print("Tuning for target RPM: ");
@@ -270,7 +274,8 @@ void Motor::setDirection(double output) {
 }
 
 double Motor::getRpm() {
-    return this->m_current_rpm_filtered; // Return the real-time RPM value
+    // Use the same alpha as in runAt, e.g., 0.1
+    return epmFilter(0.1, this->m_current_rpm_raw);
 }
 
 long Motor::getCount() {
