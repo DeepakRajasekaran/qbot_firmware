@@ -47,7 +47,7 @@ void Motor::enc_ISR() {
         this->m_current_rpm_raw = (this->m_counts_per_sec / ENCODER_PPR) * 60.0;
 
         // Adjust RPM sign based on motor type
-        if (this->m_encoder_count < 0) {
+        if (this->m_encoder_count < this->m_last_encoder_count) {
             this->m_current_rpm_raw = (this->m_type == DIRECT) ? -this->m_current_rpm_raw : this->m_current_rpm_raw;
         } else {
             this->m_current_rpm_raw = (this->m_type == DIRECT) ? this->m_current_rpm_raw : -this->m_current_rpm_raw;
@@ -58,6 +58,7 @@ void Motor::enc_ISR() {
     }
 
     this->m_last_micros = current_micros;
+    this->m_last_encoder_count = this->m_encoder_count;
 }
 
 void Motor::runAt(double targetRPM, uint8_t mode) {

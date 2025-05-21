@@ -53,6 +53,7 @@ private:
 
     volatile long m_counts_per_sec = 0;
     volatile long m_encoder_count = 0; // Encoder count
+    volatile long m_last_encoder_count = 0; // Last encoder count
     unsigned long m_last_micros;
 
     volatile double m_current_rpm_raw = 0.0;      // Real-time RPM value
