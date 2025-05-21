@@ -7,88 +7,87 @@ Motor::Motor(uint8_t type, uint8_t pwm_pin, uint8_t in1, uint8_t in2, uint8_t en
     : m_type(type), m_pwm_pin(pwm_pin), m_in1(in1), m_in2(in2), m_encA(encA), m_encB(encB), m_encoder_count(0), m_last_micros(0) {}
 
 void Motor::attach() {
-    
-    pinMode(m_pwm_pin, OUTPUT);
-    pinMode(m_in1, OUTPUT);
-    pinMode(m_in2, OUTPUT);
+    pinMode(this->m_pwm_pin, OUTPUT);
+    pinMode(this->m_in1, OUTPUT);
+    pinMode(this->m_in2, OUTPUT);
 
-    pinMode(m_encA, INPUT);
-    pinMode(m_encB, INPUT);
+    pinMode(this->m_encA, INPUT);
+    pinMode(this->m_encB, INPUT);
 
-    m_pid.SetMode(AUTOMATIC);
-    m_pid.SetOutputLimits(-255, 255); 
+    this->m_pid.SetMode(AUTOMATIC);
+    this->m_pid.SetOutputLimits(-255, 255);
 
-    m_last_micros = micros();
+    this->m_last_micros = micros();
 
     // Register this instance in the static array
     if (motorInstances[0] == nullptr) {
         motorInstances[0] = this;
-        attachInterrupt(digitalPinToInterrupt(m_encA), Motor::handleInterrupt0, RISING);
+        attachInterrupt(digitalPinToInterrupt(this->m_encA), Motor::handleInterrupt0, RISING);
     } else if (motorInstances[1] == nullptr) {
         motorInstances[1] = this;
-        attachInterrupt(digitalPinToInterrupt(m_encA), Motor::handleInterrupt1, RISING);
+        attachInterrupt(digitalPinToInterrupt(this->m_encA), Motor::handleInterrupt1, RISING);
     }
 }
 
 void Motor::enc_ISR() {
-
-    if (m_type == DIRECT) {
-        m_encoder_count += (digitalRead(m_encB) ? 1 : -1);
-    } else if (m_type == INVERSE) {
-        m_encoder_count += (digitalRead(m_encB) ? -1 : 1);
+    if (this->m_type == DIRECT) {
+        this->m_encoder_count += (digitalRead(this->m_encB) ? 1 : -1);
+    } else if (this->m_type == INVERSE) {
+        this->m_encoder_count += (digitalRead(this->m_encB) ? -1 : 1);
     }
 
-    // m_encoder_count += (digitalRead(m_encB) ? 1 : -1);
-
     unsigned long current_micros = micros();
-    unsigned long time_elapsed = current_micros - m_last_micros;
+    unsigned long time_elapsed = current_micros - this->m_last_micros;
 
     if (time_elapsed > 0) { // Avoid division by zero
         // Calculate counts per second using time elapsed
-        m_counts_per_sec = 1.0e6 / time_elapsed;
+        this->m_counts_per_sec = 1.0e6 / time_elapsed;
 
         // Calculate RPM
-        m_current_rpm_raw = (m_counts_per_sec / ENCODER_PPR) * 60.0;
+        this->m_current_rpm_raw = (this->m_counts_per_sec / ENCODER_PPR) * 60.0;
 
         // Calculate position in degrees
-        m_pos_theta = (m_encoder_count / ENCODER_PPR) * 360.0;    
+        this->m_pos_theta = (this->m_encoder_count / ENCODER_PPR) * 360.0;
     }
 
-    m_last_micros = current_micros;
+    this->m_last_micros = current_micros;
 }
 
 void Motor::runAt(double targetRPM, uint8_t mode) {
-
-    m_setpoint = map((int)targetRPM, -100, 100, -255, 255);
+    this->m_setpoint = map((int)targetRPM, -100, 100, -255, 255);
 
     float raw_rpm = 0.0;
 
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { // Safe access to shared variable
-        raw_rpm = m_current_rpm_raw;
+    // Check if the elapsed time since the last encoder interrupt exceeds 1 ms
+    unsigned long current_micros = micros();
+    if ((current_micros - this->m_last_micros) > 1000) { // If no encoder updates for >1 ms
+        this->m_current_rpm_raw = 0.0; // Reset raw RPM
     }
 
-    // low-pass filter (Exponential Moving Average)
-    // const float alpha = 0.3;
-    const int windowSize = 5;
-    m_current_rpm_filtered = movingAverageFilter(raw_rpm, windowSize);
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { // Safe access to shared variable
+        raw_rpm = this->m_current_rpm_raw;
+    }
 
-    m_input = map((int)m_current_rpm_filtered, -100, 100, -255, 255);
+    // Apply low-pass filter (Exponential Moving Average)
+    const float alpha = 0.1; // Smoothing factor
+    this->m_current_rpm_filtered = this->epmFilter(alpha, raw_rpm);
+
+    // Map filtered RPM to PID input
+    this->m_input = map((int)this->m_current_rpm_filtered, -100, 100, -255, 255);
 
     if (mode == CLOSED_LOOP) {
-
-        if (m_pid.Compute()) {
-            setDirection(m_output);
-            analogWrite(m_pwm_pin, abs((int)m_output));
+        if (this->m_pid.Compute()) {
+            this->setDirection(this->m_output);
+            analogWrite(this->m_pwm_pin, abs((int)this->m_output));
         }
     } else if (mode == OPEN_LOOP) {
-
-        setDirection(m_setpoint);
-        analogWrite(m_pwm_pin, abs((int)m_setpoint));
+        this->setDirection(this->m_setpoint);
+        analogWrite(this->m_pwm_pin, abs((int)this->m_setpoint));
     }
 }
 
 double Motor::epmFilter(double alpha, double input) {
-    return (1 - alpha) * m_current_rpm_filtered + alpha * input;
+    return (1 - alpha) * this->m_current_rpm_filtered + alpha * input;
 }
 
 double Motor::movingAverageFilter(double input, int windowSize) {
@@ -121,43 +120,43 @@ double Motor::movingAverageFilter(double input, int windowSize) {
 }
 
 void Motor::setTuningParams(double kp, double ki, double kd) {
-    m_kp = kp;
-    m_ki = ki;
-    m_kd = kd;
+    this->m_kp = kp;
+    this->m_ki = ki;
+    this->m_kd = kd;
 
-    m_pid.SetTunings(m_kp, m_ki, m_kd);
+    this->m_pid.SetTunings(this->m_kp, this->m_ki, this->m_kd);
 }
 
-void Motor::setDirection(double output){
-    if (m_type == DIRECT) {
+void Motor::setDirection(double output) {
+    if (this->m_type == DIRECT) {
         if (output > 0) {               // Forward
-            digitalWrite(m_in1, HIGH);
-            digitalWrite(m_in2, LOW);
+            digitalWrite(this->m_in1, HIGH);
+            digitalWrite(this->m_in2, LOW);
         } else {
-            digitalWrite(m_in1, LOW);   // Reverse
-            digitalWrite(m_in2, HIGH);
+            digitalWrite(this->m_in1, LOW);   // Reverse
+            digitalWrite(this->m_in2, HIGH);
         }
-    } else if (m_type == INVERSE) {
+    } else if (this->m_type == INVERSE) {
         if (output > 0) {
-            digitalWrite(m_in1, LOW);   // Forward
-            digitalWrite(m_in2, HIGH);
+            digitalWrite(this->m_in1, LOW);   // Forward
+            digitalWrite(this->m_in2, HIGH);
         } else {
-            digitalWrite(m_in1, HIGH);  // Reverse
-            digitalWrite(m_in2, LOW);
+            digitalWrite(this->m_in1, HIGH);  // Reverse
+            digitalWrite(this->m_in2, LOW);
         }
     }
 }
 
 double Motor::getRpm() {
-    return m_current_rpm_raw; // Return the real-time RPM value
+    return this->m_current_rpm_filtered; // Return the real-time RPM value
 }
 
 long Motor::getCount() {
-    return m_encoder_count;
+    return this->m_encoder_count;
 }
 
-double Motor::getPos(){
-    return m_pos_theta; // Return the position in radians
+double Motor::getPos() {
+    return this->m_pos_theta; // Return the position in degrees
 }
 
 // Static interrupt handlers
