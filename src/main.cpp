@@ -24,7 +24,7 @@ void loop() {
 
     // Run the motors with the setpoint
     leftMotor.runAt(command_rpm, CLOSED_LOOP); // run at ___rpm in ___mode
-    rightMotor.runAt(command_rpm, CLOSED_LOOP); 
+    rightMotor.runAt(command_rpm * 0, CLOSED_LOOP); 
 
     Serial.print(">");
     Serial.print("Command RPM: ");
