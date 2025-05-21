@@ -14,8 +14,10 @@ void setup() {
 
     Serial.println("Motors initialized.");
 
-    leftMotor.setTuningParams(1.0, 0.0, 0.0); // kp, ki, kd for left motor
-    rightMotor.setTuningParams(2.0, 0.0, 0.0); // kp, ki, kd for right motor
+    leftMotor.setTuningParams(2.0, 1.0, 0.5); // kp, ki, kd for left motor
+    rightMotor.setTuningParams(2.0, 1.0, 0.5); // kp, ki, kd for right motor
+
+    delay(1000); // Wait for 1 second before starting
 }
 
 void loop() {
@@ -24,7 +26,7 @@ void loop() {
 
     // Run the motors with the setpoint
     leftMotor.runAt(command_rpm, CLOSED_LOOP); // run at ___rpm in ___mode
-    rightMotor.runAt(command_rpm * 0, CLOSED_LOOP); 
+    rightMotor.runAt(command_rpm, CLOSED_LOOP); 
 
     Serial.print(">");
     Serial.print("Command RPM: ");
