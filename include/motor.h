@@ -5,6 +5,7 @@
 #include <PID_v1.h>
 #include <PID_AutoTune_v0.h>
 #include <util/atomic.h>
+#include <EEPROM.h>
 
 #define MAX_RPM 100.0
 #define ENCODER_PPR 718.0
@@ -15,10 +16,9 @@
 #define OPEN_LOOP 2
 #define CLOSED_LOOP 3
 
-
 class Motor {
 public:
-    Motor(uint8_t type, uint8_t pwm_pin, uint8_t in1, uint8_t in2, uint8_t encA, uint8_t encB);
+    Motor(uint8_t type, uint8_t pwm_pin, uint8_t in1, uint8_t in2, uint8_t encA, uint8_t encB, uint8_t eeprom_address);
 
     void attach();
     void runAt(double targetRpm, uint8_t mode);
@@ -31,25 +31,27 @@ public:
     double getRpm();
     long getCount();
     double getPos();
-    unsigned int getControlCommand();
 
-    
 private:
-    //speed control
+    // Speed control
     void enc_ISR();
     void setDirection(double output);
+    void loadFromEEPROM(uint8_t address);
+    void saveToEEPROM(uint8_t address);
 
-    uint8_t m_type; 
+    uint8_t m_type;
     uint8_t m_pwm_pin;
 
-    //direction control
+    // Direction control
     uint8_t m_in1;
     uint8_t m_in2;
 
-    //feedback
+    // Feedback
     uint8_t m_encA;
     uint8_t m_encB;
-    
+
+    uint8_t m_eeprom_start_address;
+
     volatile long m_counts_per_sec = 0;
     volatile long m_encoder_count = 0; // Encoder count
     volatile long m_last_encoder_count = 0; // Last encoder count
