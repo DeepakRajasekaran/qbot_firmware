@@ -49,7 +49,7 @@ private:
     //feedback
     uint8_t m_encA;
     uint8_t m_encB;
-
+    
     volatile long m_counts_per_sec = 0;
     volatile long m_encoder_count = 0; // Encoder count
     volatile long m_last_encoder_count = 0; // Last encoder count
