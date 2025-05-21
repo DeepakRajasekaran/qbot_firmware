@@ -14,13 +14,13 @@ void setup() {
 
     Serial.println("Motors initialized.");
 
-    leftMotor.setTuningParams(2.0, 5.0, 1.0); // kp, ki, kd for left motor
-    rightMotor.setTuningParams(2.0, 5.0, 1.0); // kp, ki, kd for right motor
+    leftMotor.setTuningParams(1.0, 0.0, 0.0); // kp, ki, kd for left motor
+    rightMotor.setTuningParams(2.0, 0.0, 0.0); // kp, ki, kd for right motor
 }
 
 void loop() {
     // Define a fixed setpoint for testing
-    double command_rpm = 0.0; // Target RPM
+    double command_rpm = 60.0; // Target RPM
 
     // Run the motors with the setpoint
     leftMotor.runAt(command_rpm, CLOSED_LOOP); // run at ___rpm in ___mode
@@ -31,15 +31,15 @@ void loop() {
     Serial.print(command_rpm);
 
     // Print feedback (RPM) to Serial Monitor
-    // Serial.print(", Motor 1 RPM: ");
-    // Serial.print(leftMotor.getRpm());
-    Serial.print(" Theta: ");
-    Serial.print(leftMotor.getPos());
+    Serial.print(", Motor 1 RPM: ");
+    Serial.print(leftMotor.getRpm());
+    //Serial.print(" Theta: ");
+    //Serial.print(leftMotor.getPos());
 
-    // Serial.print(", Motor 2 RPM: ");
-    // Serial.println(rightMotor.getRpm());
-    Serial.print(" Theta: ");
-    Serial.println(rightMotor.getPos());
+    Serial.print(", Motor 2 RPM: ");
+    Serial.println(rightMotor.getRpm());
+    //Serial.print(" Theta: ");
+    //Serial.println(rightMotor.getPos());
 
     delay(10); // Wait for 1 second before the next iteration
 }
