@@ -39,9 +39,8 @@ private:
     void enc_ISR();
     void setDirection(double output);
 
-    uint8_t m_pwm_pin;
-
     uint8_t m_type; 
+    uint8_t m_pwm_pin;
 
     //direction control
     uint8_t m_in1;
