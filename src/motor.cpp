@@ -46,12 +46,8 @@ void Motor::enc_ISR() {
         // Calculate RPM
         this->m_current_rpm_raw = (this->m_counts_per_sec / ENCODER_PPR) * 60.0;
 
-        // Adjust RPM sign based on motor type
-        if (this->m_encoder_count < this->m_last_encoder_count) {
-            this->m_current_rpm_raw = (this->m_type == DIRECT) ? -this->m_current_rpm_raw : this->m_current_rpm_raw;
-        } else {
-            this->m_current_rpm_raw = (this->m_type == DIRECT) ? this->m_current_rpm_raw : -this->m_current_rpm_raw;
-        }
+        // determine motor spinning direction
+        this->m_current_rpm_raw = (this->m_encoder_count < this->m_last_encoder_count) ? -this->m_current_rpm_raw : this->m_current_rpm_raw;
 
         // Calculate position in degrees
         this->m_pos_theta = (this->m_encoder_count / ENCODER_PPR) * 360.0;
