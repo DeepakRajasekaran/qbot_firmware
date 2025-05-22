@@ -38,7 +38,7 @@ void Motor::attach() {
     this->m_last_micros = micros();
 
     // Load PID tuning parameters from EEPROM
-    this->loadFromEEPROM(this->m_eeprom_start_address);
+    // this->loadFromEEPROM(this->m_eeprom_start_address);
 
     // Register this instance in the static array
     if (motorInstances[0] == nullptr) {
@@ -250,7 +250,7 @@ void Motor::setTuningParams(double kp, double ki, double kd) {
     this->m_kd = kd;
 
     this->m_pid.SetTunings(this->m_kp, this->m_ki, this->m_kd);
-    this->saveToEEPROM(this->m_eeprom_start_address);
+    // this->saveToEEPROM(this->m_eeprom_start_address);
 }
 
 void Motor::setDirection(double output) {
