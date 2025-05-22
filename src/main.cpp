@@ -14,11 +14,12 @@ void setup() {
 
     Serial.println("Motors initialized.");
 
-    leftMotor.tuneMotor();  // Tune left motor
-    rightMotor.tuneMotor(); // Tune right motor
+    // leftMotor.tuneMotor();  // Tune left motor
+    // rightMotor.tuneMotor(); // Tune right motor
 
-    // leftMotor.setTuningParams(2.0, 1.0, 0.5); // kp, ki, kd for left motor
-    // rightMotor.setTuningParams(2.0, 1.0, 0.5); // kp, ki, kd for right motor
+    leftMotor.setTuningParams(2.0, 1.0, 0.5); // kp, ki, kd for left motor
+    rightMotor.setTuningParams(2.0, 1.0, 0.5);    leftMotor.setTuningParams(2.0, 1.0, 0.5); // kp, ki, kd for left motor
+    rightMotor.setTuningParams(2.0, 1.0, 0.5); // kp, ki, kd for right motor // kp, ki, kd for right motor
 
     delay(1000); // Wait for 1 second before starting
 }

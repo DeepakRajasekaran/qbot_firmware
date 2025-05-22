@@ -22,7 +22,7 @@ public:
 
     void attach();
     void runAt(double targetRpm, uint8_t mode);
-    void tuneMotor();
+    // void tuneMotor();
     void setTuningParams(double kp, double ki, double kd);
     double epmFilter(double alpha, double input);
     double movingAverageFilter(double input, int windowSize);
@@ -36,8 +36,8 @@ private:
     // Speed control
     void enc_ISR();
     void setDirection(double output);
-    void loadFromEEPROM(uint8_t address);
-    void saveToEEPROM(uint8_t address);
+    // void loadFromEEPROM(uint8_t address);
+    // void saveToEEPROM(uint8_t address);
 
     uint8_t m_type;
     uint8_t m_pwm_pin;
