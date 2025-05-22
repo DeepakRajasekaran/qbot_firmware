@@ -33,16 +33,16 @@ void loop() {
     rightMotor.runAt(command_rpm, CLOSED_LOOP); 
 
     Serial.print(">");
-    Serial.print("Command RPM: ");
+    Serial.print("cmd_RPM:");
     Serial.print(command_rpm);
 
     // Print feedback (RPM) to Serial Monitor
-    Serial.print(", Motor 1 RPM: ");
+    Serial.print(",RPM_m1:");
     Serial.print(leftMotor.getRpm());
     //Serial.print(" Theta: ");
     //Serial.print(leftMotor.getPos());
 
-    Serial.print(", Motor 2 RPM: ");
+    Serial.print(",RPM_m2:");
     Serial.println(rightMotor.getRpm());
     //Serial.print(" Theta: ");
     //Serial.println(rightMotor.getPos());
