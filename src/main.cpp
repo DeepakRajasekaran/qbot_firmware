@@ -43,7 +43,7 @@ void loop() {
     Serial.print(leftMotor.getRpmRaw());
     Serial.print(",CIM1:");
     Serial.print(leftMotor.getOutput());
-    //Serial.print(" Theta: ");u
+    //Serial.print(" Theta: ");
     //Serial.print(leftMotor.getPos());
 
     Serial.print(",m2_rpm:");

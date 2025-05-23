@@ -259,25 +259,15 @@ void Motor::setDirection(double command) {
     }
 }
 
-double Motor::getRpm() {
-    return epmFilter(this->m_current_rpm_raw);
-}
+long Motor::getCount() { return this->m_encoder_count; }
 
-long Motor::getCount() {
-    return this->m_encoder_count;
-}
+int Motor::getOutput() { return this->m_output; }             // Return the last output value}
 
-double Motor::getPos() {
-    return this->m_pos_theta; // Return the position in degrees
-}
+double Motor::getRpm() { return epmFilter(this->m_current_rpm_raw ); }
 
-double Motor::getRpmRaw() {
-    return this->m_current_rpm_raw; // Return the raw RPM value
-}
+double Motor::getPos() { return this->m_pos_theta; }          // Return the position in degrees}
 
-int Motor::getOutput() {
-    return this->m_output; // Return the last output value
-}
+double Motor::getRpmRaw() { return this->m_current_rpm_raw; } // Return the raw RPM value}
 
 // Static interrupt handlers
 void Motor::handleInterrupt0() {
