@@ -31,6 +31,7 @@ public:
     double getRpm();
     long getCount();
     double getPos();
+    double getRpmRaw();
 
 private:
     // Speed control

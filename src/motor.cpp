@@ -286,6 +286,11 @@ double Motor::getPos() {
     return this->m_pos_theta; // Return the position in degrees
 }
 
+
+double Motor::getRpmRaw() {
+    return this->m_current_rpm_raw; // Return the raw RPM value
+}
+
 // Static interrupt handlers
 void Motor::handleInterrupt0() {
     if (motorInstances[0]) {
