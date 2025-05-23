@@ -17,9 +17,8 @@ void setup() {
     // leftMotor.tuneMotor();  // Tune left motor
     // rightMotor.tuneMotor(); // Tune right motor
 
-    leftMotor.setTuningParams(2.0, 1.0, 0.5); // kp, ki, kd for left motor
-    rightMotor.setTuningParams(2.0, 1.0, 0.5);    leftMotor.setTuningParams(2.0, 1.0, 0.5); // kp, ki, kd for left motor
-    rightMotor.setTuningParams(2.0, 1.0, 0.5); // kp, ki, kd for right motor // kp, ki, kd for right motor
+    leftMotor.setTuningParams(0.25, 0.40, 02.0); // kp, ki, kd for left motor
+    rightMotor.setTuningParams(1.5, 0.0, 0.0);   
 
     delay(1000); // Wait for 1 second before starting
 }
@@ -40,15 +39,19 @@ void loop() {
     // Print feedback (RPM) to Serial Monitor
     Serial.print(",m1_rpm:");
     Serial.print(leftMotor.getRpm());
-    Serial.print("m1_raw");
+    Serial.print(",m1_raw:");
     Serial.print(leftMotor.getRpmRaw());
-    //Serial.print(" Theta: ");
+    Serial.print(",CIM1:");
+    Serial.print(leftMotor.getOutput());
+    //Serial.print(" Theta: ");u
     //Serial.print(leftMotor.getPos());
 
     Serial.print(",m2_rpm:");
     Serial.print(rightMotor.getRpm());
-    Serial.print("m2_raw");
-    Serial.println(rightMotor.getRpmRaw());
+    Serial.print(",m2_raw:");
+    Serial.print(rightMotor.getRpmRaw());
+    Serial.print(",CIM2:");
+    Serial.println(rightMotor.getOutput());
     //Serial.print(" Theta: ");
     //Serial.println(rightMotor.getPos());
 

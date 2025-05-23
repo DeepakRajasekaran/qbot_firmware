@@ -291,6 +291,9 @@ double Motor::getRpmRaw() {
     return this->m_current_rpm_raw; // Return the raw RPM value
 }
 
+int Motor::getOutput() {
+    return this->m_output; // Return the last output value
+}
 // Static interrupt handlers
 void Motor::handleInterrupt0() {
     if (motorInstances[0]) {

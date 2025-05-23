@@ -5,7 +5,7 @@
 #include <PID_v1.h>
 #include <PID_AutoTune_v0.h>
 #include <util/atomic.h>
-#include <EEPROM.h>
+// #include <EEPROM.h>
 
 #define MAX_RPM 80.0
 #define ENCODER_PPR 718.0
@@ -32,6 +32,8 @@ public:
     long getCount();
     double getPos();
     double getRpmRaw();
+    int getOutput();
+    
 
 private:
     // Speed control
