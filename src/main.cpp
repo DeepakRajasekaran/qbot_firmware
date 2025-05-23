@@ -17,7 +17,7 @@ void setup() {
     // leftMotor.tuneMotor();  // Tune left motor
     // rightMotor.tuneMotor(); // Tune right motor
 
-    leftMotor.setTuningParams(0.25, 0.40, 02.0); // kp, ki, kd for left motor
+    leftMotor.setTuningParams(0.6, 0.7, 02.0); // kp, ki, kd for left motor
     rightMotor.setTuningParams(1.5, 0.0, 0.0);   
 
     delay(1000); // Wait for 1 second before starting

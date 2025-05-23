@@ -26,6 +26,8 @@ Motor::Motor(
 
 void Motor::attach() {
     pinMode(this->m_pwm_pin, OUTPUT);
+    analogWrite(this->m_pwm_pin, 0); // initial idle state
+
     pinMode(this->m_in1, OUTPUT);
     pinMode(this->m_in2, OUTPUT);
 
@@ -33,7 +35,7 @@ void Motor::attach() {
     pinMode(this->m_encB, INPUT);
 
     this->m_pid.SetMode(AUTOMATIC);
-    this->m_pid.SetOutputLimits(-255, 255);
+    this->m_pid.SetOutputLimits(0, 255);
 
     this->m_last_micros = micros();
 
@@ -79,9 +81,9 @@ void Motor::enc_ISR() {
 }
 
 void Motor::runAt(double targetRPM, uint8_t mode) {
-    this->m_setpoint = map((int)targetRPM, -100, 100, -255, 255);
+    this->m_setpoint = map(abs((int)targetRPM), 0, MAX_RPM, 0, 255);
 
-    float raw_rpm = 0.0;
+    double raw_rpm = 0.0;
 
     // Check if the elapsed time since the last encoder interrupt exceeds 1 ms
     unsigned long current_micros = micros();
@@ -94,154 +96,138 @@ void Motor::runAt(double targetRPM, uint8_t mode) {
     }
 
     // Apply low-pass filter (Exponential Moving Average)
-    const float alpha = 0.1; // Smoothing factor
-    this->m_current_rpm_filtered = this->epmFilter(alpha, raw_rpm);
+    this->m_current_rpm_filtered = this->epmFilter(raw_rpm);
 
     // Map filtered RPM to PID input
-    this->m_input = map((int)this->m_current_rpm_filtered, -100, 100, -255, 255);
+    this->m_input = map(abs((int)this->m_current_rpm_filtered), 0, MAX_RPM, 0, 255);
 
     if (mode == CLOSED_LOOP) {
         if (this->m_pid.Compute()) {
-            this->setDirection(this->m_output);
-            analogWrite(this->m_pwm_pin, abs((int)this->m_output));
+            this->setDirection(targetRPM);
+            analogWrite(this->m_pwm_pin, this->m_output);
         }
     } else if (mode == OPEN_LOOP) {
-        this->setDirection(this->m_setpoint);
-        analogWrite(this->m_pwm_pin, abs((int)this->m_setpoint));
+        this->setDirection(targetRPM);
+        analogWrite(this->m_pwm_pin, this->m_setpoint);
     }
 }
 
-// void Motor::tuneMotor() {
-//     double input = 0, output = 0;
-//     PID_ATune aTune(&input, &output);
+/*
+void Motor::tuneMotor() {
+    double input = 0, output = 0;
+    PID_ATune aTune(&input, &output);
 
-//     // Configure autotune parameters
-//     aTune.SetNoiseBand(0.5);
-//     aTune.SetOutputStep(50);
-//     aTune.SetLookbackSec(10);
-//     aTune.SetControlType(1); // PI or PID
+    // Configure autotune parameters
+    aTune.SetNoiseBand(0.5);
+    aTune.SetOutputStep(50);
+    aTune.SetLookbackSec(10);
+    aTune.SetControlType(1); // PI or PID
 
-//     // Set initial output to zero
-//     output = 0;
-//     analogWrite(this->m_pwm_pin, 0);
+    // Set initial output to zero
+    output = 0;
+    analogWrite(this->m_pwm_pin, 0);
 
-//     unsigned long start = millis();
-//     bool tuning = true;
+    unsigned long start = millis();
+    bool tuning = true;
 
-//     // Define the step size for RPM increments
-//     const double stepSize = MAX_RPM / 10.0; // Divide the range into 10 steps
-//     double targetRPM = 0;
+    // Define the step size for RPM increments
+    const double stepSize = MAX_RPM / 10.0; // Divide the range into 10 steps
+    double targetRPM = 0;
 
-//     while (tuning) {
-//         // Increment the target RPM in steps only after 1 minute
-//         static unsigned long lastStepChange = start;
-//         if (millis() - lastStepChange > 6000) { // 1 minute has passed
-//             targetRPM += stepSize;
-//             lastStepChange = millis();
-//             if (targetRPM > MAX_RPM) {
-//             tuning = false; // Stop tuning when the max RPM is reached
-//             break;
-//             }
-//         }
-
-//         Serial.print("Tuning for target RPM: ");
-//         Serial.println(targetRPM);
-
-//         // Simulate closed-loop: update input from filtered RPM
-//         input = this->getRpm();
-
-//         // Run autotune step
-//         int result = aTune.Runtime();
-//         if (result != 0) { // Check if tuning is complete
-//             tuning = false;
-//         }
-
-//         // Apply output to motor
-//         this->setDirection(output); // Set motor direction based on output
-//         analogWrite(this->m_pwm_pin, abs((int)output)); // Apply PWM signal to motor
-
-//         // Timeout to avoid infinite loop
-//         if (millis() - start > 60000) { // 1-minute timeout
-//             Serial.println("Autotune timeout!");
-//             break;
-//         }
-
-//         delay(10); // Small delay to allow processing
-//     }
-
-//     // Retrieve tuned parameters
-//     double kp = aTune.GetKp();
-//     double ki = aTune.GetKi();
-//     double kd = aTune.GetKd();
-
-//     // Save and apply new PID parameters
-//     if (kp > 0 && ki >= 0 && kd >= 0) { // Ensure valid parameters
-//         this->setTuningParams(kp, ki, kd);
-//         Serial.println("Autotune complete. Parameters saved:");
-//         Serial.print("Kp: "); Serial.println(kp);
-//         Serial.print("Ki: "); Serial.println(ki);
-//         Serial.print("Kd: "); Serial.println(kd);
-//     } else {
-//         Serial.println("Autotune failed. Invalid parameters.");
-//     }
-
-//     // Stop the motor after tuning
-//     analogWrite(this->m_pwm_pin, 0);
-// }
-
-// void Motor::loadFromEEPROM(uint8_t address) {
-//     EEPROM.get(address, this->m_kp);
-//     address += sizeof(this->m_kp);
-
-//     EEPROM.get(address, this->m_ki);
-//     address += sizeof(this->m_ki);
-
-//     EEPROM.get(address, this->m_kd);
-
-//     this->m_pid.SetTunings(this->m_kp, this->m_ki, this->m_kd);
-// }
-
-// void Motor::saveToEEPROM(uint8_t address) {
-//     EEPROM.put(address, this->m_kp);
-//     address += sizeof(this->m_kp);
-
-//     EEPROM.put(address, this->m_ki);
-//     address += sizeof(this->m_ki);
-
-//     EEPROM.put(address, this->m_kd);
-// }
-
-double Motor::epmFilter(double alpha, double input) {
-    return (1 - alpha) * this->m_current_rpm_filtered + alpha * input;
-}
-
-double Motor::movingAverageFilter(double input, int windowSize) {
-    static double* window = nullptr;
-    static int currentWindowSize = 0;
-    static int index = 0;
-    static int count = 0;
-
-    if (window == nullptr || currentWindowSize != windowSize) {
-        if (window != nullptr) {
-            delete[] window;
+    while (tuning) {
+        // Increment the target RPM in steps only after 1 minute
+        static unsigned long lastStepChange = start;
+        if (millis() - lastStepChange > 6000) { // 1 minute has passed
+            targetRPM += stepSize;
+            lastStepChange = millis();
+            if (targetRPM > MAX_RPM) {
+            tuning = false; // Stop tuning when the max RPM is reached
+            break;
+            }
         }
-        window = new double[windowSize];
-        for (int i = 0; i < windowSize; ++i) window[i] = 0.0;
-        currentWindowSize = windowSize;
-        index = 0;
-        count = 0;
+
+        Serial.print("Tuning for target RPM: ");
+        Serial.println(targetRPM);
+
+        // Simulate closed-loop: update input from filtered RPM
+        input = this->getRpm();
+
+        // Run autotune step
+        int result = aTune.Runtime();
+        if (result != 0) { // Check if tuning is complete
+            tuning = false;
+        }
+
+        // Apply output to motor
+        this->setDirection(output); // Set motor direction based on output
+        analogWrite(this->m_pwm_pin, abs((int)output)); // Apply PWM signal to motor
+
+        // Timeout to avoid infinite loop
+        if (millis() - start > 60000) { // 1-minute timeout
+            Serial.println("Autotune timeout!");
+            break;
+        }
+
+        delay(10); // Small delay to allow processing
     }
 
-    window[index] = input;
-    index = (index + 1) % windowSize;
-    if (count < windowSize) count++;
+    // Retrieve tuned parameters
+    double kp = aTune.GetKp();
+    double ki = aTune.GetKi();
+    double kd = aTune.GetKd();
 
-    double sum = 0;
-    for (int i = 0; i < count; ++i) {
-        sum += window[i];
+    // Save and apply new PID parameters
+    if (kp > 0 && ki >= 0 && kd >= 0) { // Ensure valid parameters
+        this->setTuningParams(kp, ki, kd);
+        Serial.println("Autotune complete. Parameters saved:");
+        Serial.print("Kp: "); Serial.println(kp);
+        Serial.print("Ki: "); Serial.println(ki);
+        Serial.print("Kd: "); Serial.println(kd);
+    } else {
+        Serial.println("Autotune failed. Invalid parameters.");
     }
 
-    return sum / count;
+    // Stop the motor after tuning
+    analogWrite(this->m_pwm_pin, 0);
+}
+
+void Motor::loadFromEEPROM(uint8_t address) {
+    EEPROM.get(address, this->m_kp);
+    address += sizeof(this->m_kp);
+
+    EEPROM.get(address, this->m_ki);
+    address += sizeof(this->m_ki);
+
+    EEPROM.get(address, this->m_kd);
+
+    this->m_pid.SetTunings(this->m_kp, this->m_ki, this->m_kd);
+}
+
+void Motor::saveToEEPROM(uint8_t address) {
+    EEPROM.put(address, this->m_kp);
+    address += sizeof(this->m_kp);
+
+    EEPROM.put(address, this->m_ki);
+    address += sizeof(this->m_ki);
+
+    EEPROM.put(address, this->m_kd);
+}
+ */
+
+double Motor::epmFilter(double input) {
+    // Adaptive alpha based on the difference between input and filtered value
+    double alpha_min = 0.05;
+    double alpha_max = 0.5;
+    double k         = 0.02; // Steepness factor (tune as needed)
+    double diff      = fabs(input - this->m_current_rpm_filtered);
+
+    // Use a sigmoid function to adapt alpha:
+    // alpha = alpha_min + (alpha_max - alpha_min) * sigmoid(k * diff)
+
+    double sigmoid   = 1.0 / (1.0 + exp(-k * diff));
+    double alpha     = alpha_min + (alpha_max - alpha_min) * sigmoid;
+
+    return (1 - alpha) * this->m_current_rpm_filtered + alpha * input;
 }
 
 void Motor::setTuningParams(double kp, double ki, double kd) {
@@ -275,7 +261,7 @@ void Motor::setDirection(double output) {
 
 double Motor::getRpm() {
     // Use the same alpha as in runAt, e.g., 0.1
-    return epmFilter(0.1, this->m_current_rpm_raw);
+    return epmFilter(this->m_current_rpm_raw);
 }
 
 long Motor::getCount() {

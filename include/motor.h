@@ -24,8 +24,7 @@ public:
     void runAt(double targetRpm, uint8_t mode);
     // void tuneMotor();
     void setTuningParams(double kp, double ki, double kd);
-    double epmFilter(double alpha, double input);
-    double movingAverageFilter(double input, int windowSize);
+    double epmFilter(double input);
 
     // Getters
     double getRpm();
