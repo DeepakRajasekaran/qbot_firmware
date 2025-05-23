@@ -7,7 +7,7 @@
 #include <util/atomic.h>
 // #include <EEPROM.h>
 
-#define MAX_RPM 80.0
+#define MAX_RPM 95.0
 #define ENCODER_PPR 718.0
 
 #define DIRECT 0
@@ -37,7 +37,7 @@ public:
 private:
     // Speed control
     void enc_ISR();
-    void setDirection(double output);
+    void setDirection(double command);
     // void loadFromEEPROM(uint8_t address);
     // void saveToEEPROM(uint8_t address);
 

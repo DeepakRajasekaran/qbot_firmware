@@ -81,25 +81,25 @@ void Motor::enc_ISR() {
 }
 
 void Motor::runAt(double targetRPM, uint8_t mode) {
-    this->m_setpoint = map(abs((int)targetRPM), 0, MAX_RPM, 0, 255);
-
+    
     double raw_rpm = 0.0;
-
+    
     // Check if the elapsed time since the last encoder interrupt exceeds 1 ms
     unsigned long current_micros = micros();
     if ((current_micros - this->m_last_micros) > 1000) { // If no encoder updates for >1 ms
         this->m_current_rpm_raw = 0.0; // Reset raw RPM
     }
-
+    
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { // Safe access to shared variable
         raw_rpm = this->m_current_rpm_raw;
     }
-
+    
     // Apply low-pass filter (Exponential Moving Average)
     this->m_current_rpm_filtered = this->epmFilter(raw_rpm);
-
+    
     // Map filtered RPM to PID input
     this->m_input = map(abs((int)this->m_current_rpm_filtered), 0, MAX_RPM, 0, 255);
+    this->m_setpoint = map(abs((int)targetRPM), 0, MAX_RPM, 0, 255);
 
     if (mode == CLOSED_LOOP) {
         if (this->m_pid.Compute()) {
@@ -239,9 +239,9 @@ void Motor::setTuningParams(double kp, double ki, double kd) {
     // this->saveToEEPROM(this->m_eeprom_start_address);
 }
 
-void Motor::setDirection(double output) {
+void Motor::setDirection(double command) {
     if (this->m_type == DIRECT) {
-        if (output > 0) {               // Forward
+        if (command > 0) {               // Forward
             digitalWrite(this->m_in1, HIGH);
             digitalWrite(this->m_in2, LOW);
         } else {
@@ -249,7 +249,7 @@ void Motor::setDirection(double output) {
             digitalWrite(this->m_in2, HIGH);
         }
     } else if (this->m_type == INVERSE) {
-        if (output > 0) {
+        if (command > 0) {
             digitalWrite(this->m_in1, LOW);   // Forward
             digitalWrite(this->m_in2, HIGH);
         } else {
@@ -260,7 +260,6 @@ void Motor::setDirection(double output) {
 }
 
 double Motor::getRpm() {
-    // Use the same alpha as in runAt, e.g., 0.1
     return epmFilter(this->m_current_rpm_raw);
 }
 
@@ -272,7 +271,6 @@ double Motor::getPos() {
     return this->m_pos_theta; // Return the position in degrees
 }
 
-
 double Motor::getRpmRaw() {
     return this->m_current_rpm_raw; // Return the raw RPM value
 }
@@ -280,6 +278,7 @@ double Motor::getRpmRaw() {
 int Motor::getOutput() {
     return this->m_output; // Return the last output value
 }
+
 // Static interrupt handlers
 void Motor::handleInterrupt0() {
     if (motorInstances[0]) {
