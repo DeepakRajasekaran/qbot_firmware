@@ -3,9 +3,7 @@
 
 #include <Arduino.h>
 #include <PID_v1.h>
-#include <PID_AutoTune_v0.h>
 #include <util/atomic.h>
-// #include <EEPROM.h>
 
 #define MAX_RPM 95.0
 #define ENCODER_PPR 718.0
@@ -16,16 +14,18 @@
 #define OPEN_LOOP 2
 #define CLOSED_LOOP 3
 
+#define MEDIAN_WINDOW 3
+
+#define RPM_TIMEOUT_uS 1.0e6
+
 class Motor {
 public:
     Motor(uint8_t type, uint8_t pwm_pin, uint8_t in1, uint8_t in2, uint8_t encA, uint8_t encB, uint8_t eeprom_address);
 
     void attach();
     void runAt(double targetRpm, uint8_t mode);
-    // void tuneMotor();
     void setTuningParams(double kp, double ki, double kd);
-    double epmFilter(double input);
-
+    
     // Getters
     double getRpm();
     long getCount();
@@ -33,13 +33,12 @@ public:
     double getRpmRaw();
     int getOutput();
     
-
-private:
+    
+    private:
     // Speed control
     void enc_ISR();
     void setDirection(double command);
-    // void loadFromEEPROM(uint8_t address);
-    // void saveToEEPROM(uint8_t address);
+    double epmFilter(double input);
 
     uint8_t m_type;
     uint8_t m_pwm_pin;
@@ -51,6 +50,12 @@ private:
     // Feedback
     uint8_t m_encA;
     uint8_t m_encB;
+
+    // filter parameters
+    double rpm_history[MEDIAN_WINDOW] = {0}; // Buffer to store recent RPM values
+    int history_index = 0;
+    double prev_input = 0.0;
+    double prev_output = 0.0;
 
     uint8_t m_eeprom_start_address;
 

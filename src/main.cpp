@@ -1,11 +1,13 @@
 #include "motor.h"
 
+#define period 8 // 125 hz | cycle time (8ms)
+
 // Create two motor instances
-Motor leftMotor(INVERSE, A0, 6, 7, 3, 5, 0); // Motor 1: pwm = a0, in1=6, in2=7, encA=3, encB=5
-Motor rightMotor(DIRECT, A1, 8, 9, 2, 4, 24); // Motor 2: pwm = a1, in1=8, in2=9, encA=2, encB=4
+Motor leftMotor(DIRECT, 11, 8, 9, 3, 5, 24); // Motor 1: pwm = a0, in1=6, in2=7, encA=3, encB=5
+Motor rightMotor(INVERSE, 10, 6, 7, 2, 4, 0); // Motor 2: pwm = a1, in1=8, in2=9, encA=2, encB=4
 
 void setup() {
-    Serial.begin(9600); // Initialize Serial communication
+    Serial.begin(115200); // Initialize Serial communication
     delay(1000);        // Wait for Serial Monitor to initialize
 
     // Initialize both motors
@@ -17,43 +19,26 @@ void setup() {
     // leftMotor.tuneMotor();  // Tune left motor
     // rightMotor.tuneMotor(); // Tune right motor
 
-    leftMotor.setTuningParams(0.6, 0.7, 02.0); // kp, ki, kd for left motor
-    rightMotor.setTuningParams(1.5, 0.0, 0.0);   
+    leftMotor.setTuningParams(1.3, 3.2, 0.1); // kp, ki, kd for left motor
+    rightMotor.setTuningParams(1.3, 3.5, 0.1);   
 
     delay(1000); // Wait for 1 second before starting
+
 }
 
 void loop() {
-    // Define a fixed setpoint for testing
-    double command_rpm = 60.0; // Target RPM
 
-    // Run the motors with the setpoint
-    leftMotor.runAt(command_rpm, CLOSED_LOOP); // run at ___rpm in ___mode
-    rightMotor.runAt(command_rpm, CLOSED_LOOP); 
+    int startMillis = millis();
 
-    Serial.print(">");
-    Serial.print("crpm:");
-    Serial.print(command_rpm);
-    
 
-    // Print feedback (RPM) to Serial Monitor
-    Serial.print(",m1_rpm:");
-    Serial.print(leftMotor.getRpm());
-    Serial.print(",m1_raw:");
-    Serial.print(leftMotor.getRpmRaw());
-    Serial.print(",CIM1:");
-    Serial.print(leftMotor.getOutput());
-    //Serial.print(" Theta: ");
-    //Serial.print(leftMotor.getPos());
 
-    Serial.print(",m2_rpm:");
-    Serial.print(rightMotor.getRpm());
-    Serial.print(",m2_raw:");
-    Serial.print(rightMotor.getRpmRaw());
-    Serial.print(",CIM2:");
-    Serial.println(rightMotor.getOutput());
-    //Serial.print(" Theta: ");
-    //Serial.println(rightMotor.getPos());
+    // Calculate elapsed time and delay to maintain the desired frequency
 
-    delay(10); // Wait for 1 second before the next iteration
+    int endMillis = millis();
+    int elapsedTime = endMillis - startMillis;
+    int delayTime = period - elapsedTime;
+
+    if (delayTime > 0) {
+        delay(delayTime);
+    }
 }
