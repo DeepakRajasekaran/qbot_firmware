@@ -77,4 +77,6 @@ public:
     static void handleInterrupt1();
 };
 
+void motor_set_pwm(int pwm);
+
 #endif

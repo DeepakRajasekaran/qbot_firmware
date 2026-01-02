@@ -1,5 +1,7 @@
-#include "motor.h"
-// #include <EEPROM.h> // Include EEPROM library
+#include "globals.h" // Ensure this is included for g_last_cmd_time
+#include "motor.h" // Ensure this is included for motor_set_pwm
+
+#define CMD_TIMEOUT_MS 300
 
 // Static array to store Motor instances for interrupt handling
 static Motor* motorInstances[2] = {nullptr, nullptr};
@@ -167,4 +169,13 @@ void Motor::handleInterrupt1() {
     if (motorInstances[1]) {
         motorInstances[1]->enc_ISR();
     }
+}
+
+void motor_update() {
+    if (millis() - g_last_cmd_time > CMD_TIMEOUT_MS) {
+        motor_set_pwm(0);
+        return;
+    }
+
+    // ...existing code...
 }

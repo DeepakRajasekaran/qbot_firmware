@@ -3,10 +3,12 @@
 
 #include <Arduino.h>
 
-extern String command; // Declare as extern
+void initCom(unsigned long baudRate);
 
-void initCom(uint16_t baudRate);
 void readCommand();
+
 void sendFeedback();
 
-#endif // COM_H
+void parseCommand();
+
+#endif
