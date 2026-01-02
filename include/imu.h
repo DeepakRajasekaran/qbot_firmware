@@ -1,18 +1,15 @@
 #pragma once
+#include <stdint.h>
 
 void imu_init();
 void imu_update();
 
 extern bool imu_ok;
 
-extern float imu_ax;
-extern float imu_ay;
-extern float imu_az;
+extern int16_t imu_ax;
+extern int16_t imu_ay;
+extern int16_t imu_az;
 
-extern float imu_gx;
-extern float imu_gy;
-extern float imu_gz;
-
-extern float imu_roll;
-extern float imu_pitch;
-extern float imu_yaw;
+extern int16_t imu_gx;
+extern int16_t imu_gy;
+extern int16_t imu_gz;

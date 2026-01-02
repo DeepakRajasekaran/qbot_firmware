@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "com.h"
 #include "globals.h"
 #include "imu.h"
@@ -77,10 +78,6 @@ void sendFeedback() {
     Serial.print(",IMU_GY:"); Serial.print(imu_ok ? imu_gy : 0, 4);
     Serial.print(",IMU_GZ:"); Serial.print(imu_ok ? imu_gz : 0, 4);
 
-    Serial.print(",IMU_ROLL:"); Serial.print(imu_ok ? imu_roll : 0, 4);
-    Serial.print(",IMU_PITCH:"); Serial.print(imu_ok ? imu_pitch : 0, 4);
-    Serial.print(",IMU_YAW:"); Serial.print(imu_ok ? imu_yaw : 0, 4);
-
     Serial.println(">");
 }
 
@@ -155,11 +152,13 @@ void process_packet(...) {
 }
 
 void build_feedback_packet() {
-    // ...existing code...
+    uint8_t tx_buffer[256];
+    uint8_t idx = 0;
+
+    // ...existing packet writes...
 
     // Append IMU data
     if (imu_ok) {
-        // Accelerometer (raw int16)
         tx_buffer[idx++] = highByte(imu_ax);
         tx_buffer[idx++] = lowByte(imu_ax);
 
@@ -169,7 +168,6 @@ void build_feedback_packet() {
         tx_buffer[idx++] = highByte(imu_az);
         tx_buffer[idx++] = lowByte(imu_az);
 
-        // Gyroscope (raw int16)
         tx_buffer[idx++] = highByte(imu_gx);
         tx_buffer[idx++] = lowByte(imu_gx);
 
@@ -179,7 +177,6 @@ void build_feedback_packet() {
         tx_buffer[idx++] = highByte(imu_gz);
         tx_buffer[idx++] = lowByte(imu_gz);
     } else {
-        // Fill with zeros if IMU is not present
         for (uint8_t i = 0; i < 12; i++) {
             tx_buffer[idx++] = 0;
         }
