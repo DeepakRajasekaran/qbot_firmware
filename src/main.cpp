@@ -1,37 +1,18 @@
-#include <Arduino.h>
-#include <Wire.h>
-#include <MPU6050.h>
-#include <LiquidCrystal_I2C.h>
-#include <PID_v1.h>
-
-/* --- CONFIGURATION --- */
-const float WHEEL_DIAMETER = 0.065; 
-const float WHEEL_BASE     = 0.150; 
-const int   ENCODER_PPR    = 1920;  
-const float PID_SAMPLE_TIME = 50;   
-
-/* --- MODES --- */
-enum OpMode { MODE_IDLE = 0, MODE_VELOCITY = 1, MODE_DIRECT = 2, MODE_ACTION = 3, MODE_DIAGNOSTIC = 4 };
-OpMode currentMode = MODE_IDLE;
-
-/* --- PIN DEFINITIONS (AS-WIRED) --- */
-const int L_PWM = 11, L_DIR1 = 8, L_DIR2 = 9, L_ENCA = 3, L_ENCB = 5;
-const int R_PWM = 10, R_DIR1 = 6, R_DIR2 = 7, R_ENCA = 2, R_ENCB = 4;
+#include "qbot.h"
 
 /* --- GLOBALS --- */
-MPU6050 imu;
+OpMode currentMode = MODE_IDLE;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 volatile long encLeft = 0, encRight = 0;
 double setpointL = 0, inputL = 0, outputL = 0;
 double setpointR = 0, inputR = 0, outputR = 0;
 
-// PID Tunings
-double Kp = 1.2, Ki = 5.0, Kd = 0.05; 
-PID pidL(&inputL, &outputL, &setpointL, Kp, Ki, Kd, DIRECT);
-PID pidR(&inputR, &outputR, &setpointR, Kp, Ki, Kd, DIRECT);
+PID pidL(&inputL, &outputL, &setpointL, 1.3, 3.2, 0.1, DIRECT);
+PID pidR(&inputR, &outputR, &setpointR, 1.3, 3.5, 0.1, DIRECT);
 
 // Odometry Pose
+int telemetryMode = COM; // 0=OFF, 1=TEST, 2=COM
 float poseX = 0, poseY = 0, poseTheta = 0;
 unsigned long lastProcessTime = 0;
 
@@ -47,7 +28,6 @@ void stopMotors() {
 }
 
 void driveMotor(int pwmPin, int d1, int d2, float val, bool inverse) {
-    // val is -255 to 255 (from PID output)
     int pwm = constrain(abs((int)val), 0, 255);
     bool forward = val > 0;
     if (inverse) forward = !forward;
@@ -58,39 +38,110 @@ void driveMotor(int pwmPin, int d1, int d2, float val, bool inverse) {
 }
 
 /* --- UI/LCD --- */
-byte eyeOpen[8]  = {0x00,0x0E,0x1F,0x1F,0x1F,0x1F,0x0E,0x00};
-byte eyeBlink[8] = {0x00,0x00,0x00,0x1F,0x1F,0x00,0x00,0x00};
+byte eyeOpenTL[8] = {0x00, 0x00, 0x03, 0x07, 0x0F, 0x1F, 0x1F, 0x1F};
+byte eyeOpenTR[8] = {0x00, 0x00, 0x18, 0x1C, 0x1E, 0x1F, 0x1F, 0x1F};
+byte eyeOpenBL[8] = {0x1F, 0x1F, 0x1F, 0x0F, 0x07, 0x03, 0x00, 0x00};
+byte eyeOpenBR[8] = {0x1F, 0x1F, 0x1F, 0x1E, 0x1C, 0x18, 0x00, 0x00};
+byte eyeBlinkTL[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F};
+byte eyeBlinkTR[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F};
+byte eyeBlinkBL[8] = {0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte eyeBlinkBR[8] = {0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 void updateLCD() {
+    static OpMode lastMode = (OpMode)-1;
+    static unsigned long modeChangeTime = 0;
+    static bool inTransition = false;
+    static bool forceRedraw = true;
+
+    // 1. Handle Mode Change
+    if (currentMode != lastMode) {
+        lastMode = currentMode;
+        inTransition = true;
+        modeChangeTime = millis();
+        lcd.clear();
+        
+        // Show Log Message
+        lcd.setCursor(0, 0);
+        lcd.print("MODE CHANGED:");
+        lcd.setCursor(0, 1);
+        
+        String logMsg = "";
+        switch(currentMode) {
+            case MODE_IDLE:       logMsg = "IDLE"; break;
+            case MODE_VELOCITY:   logMsg = "VELOCITY"; break;
+            case MODE_DIRECT:     logMsg = "DIRECT"; break;
+            case MODE_DIAGNOSTIC: logMsg = "DIAGNOSTIC"; break;
+            default:              logMsg = "ACTION"; break;
+        }
+        
+        // Center the text
+        int pad = (16 - logMsg.length()) / 2;
+        if (pad < 0) pad = 0;
+        for(int i=0; i<pad; i++) lcd.print(" ");
+        lcd.print(logMsg);
+        return;
+    }
+
+    // 2. Handle Transition Timeout
+    if (inTransition) {
+        if (millis() - modeChangeTime > 3000) {
+            inTransition = false;
+            lcd.clear();
+            forceRedraw = true;
+        } else {
+            return; // Wait for 3 seconds to pass
+        }
+    }
+
+    // 3. Draw Eyes (Normal Operation)
     static unsigned long lastBlink = 0;
     static bool blinkState = false;
+    
     if (millis() - lastBlink > (blinkState ? 150 : 3000)) {
         blinkState = !blinkState;
         lastBlink = millis();
-        lcd.setCursor(5, 0); lcd.write(blinkState ? 1 : 0);
-        lcd.setCursor(10, 0); lcd.write(blinkState ? 1 : 0);
+        forceRedraw = true;
     }
-    lcd.setCursor(0, 1);
-    switch(currentMode) {
-        case MODE_IDLE:       lcd.print("MODE: IDLE    "); break;
-        case MODE_VELOCITY:   lcd.print("MODE: VELOCITY"); break;
-        case MODE_DIRECT:     lcd.print("MODE: DIRECT  "); break;
-        case MODE_DIAGNOSTIC: lcd.print("MODE: DIAG    "); break;
-        default:              lcd.print("MODE: ACTION  "); break;
+    
+    if (forceRedraw) {
+        int tl = blinkState ? 4 : 0;
+        int tr = blinkState ? 5 : 1;
+        int bl = blinkState ? 6 : 2;
+        int br = blinkState ? 7 : 3;
+
+        // Left Eye (Cols 2,3)
+        lcd.setCursor(2, 0); lcd.write(tl);
+        lcd.setCursor(3, 0); lcd.write(tr);
+        lcd.setCursor(2, 1); lcd.write(bl);
+        lcd.setCursor(3, 1); lcd.write(br);
+        
+        // Right Eye (Cols 12,13)
+        lcd.setCursor(12, 0); lcd.write(tl);
+        lcd.setCursor(13, 0); lcd.write(tr);
+        lcd.setCursor(12, 1); lcd.write(bl);
+        lcd.setCursor(13, 1); lcd.write(br);
+        
+        forceRedraw = false;
     }
 }
 
 /* --- NAVIGATION & SENSORS --- */
 void processOdometry(float dt) {
     static long lastEncL = 0, lastEncR = 0;
-    long dL = encLeft - lastEncL;
-    long dR = encRight - lastEncR;
-    lastEncL = encLeft; lastEncR = encRight;
+    
+    long currEncL, currEncR;
+    noInterrupts(); // Disable interrupts to ensure atomic read of 4-byte variables
+    currEncL = encLeft;
+    currEncR = encRight;
+    interrupts();   // Re-enable interrupts immediately
+
+    long dL = currEncL - lastEncL;
+    long dR = currEncR - lastEncR;
+    lastEncL = currEncL; lastEncR = currEncR;
 
     float distL = (dL / (float)ENCODER_PPR) * (PI * WHEEL_DIAMETER);
     float distR = (dR / (float)ENCODER_PPR) * (PI * WHEEL_DIAMETER);
 
-    // Current RPM for PID feedback
     inputL = (distL / dt) * 60.0 / (PI * WHEEL_DIAMETER);
     inputR = (distR / dt) * 60.0 / (PI * WHEEL_DIAMETER);
 
@@ -103,14 +154,24 @@ void processOdometry(float dt) {
 }
 
 void sendFeedback() {
-    int16_t ax, ay, az, gx, gy, gz;
-    imu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    // Format: f x y theta ax ay az gx gy gz measL measR
-    Serial.print("f ");
-    Serial.print(poseX); Serial.print(" "); Serial.print(poseY); Serial.print(" "); Serial.print(poseTheta); Serial.print(" ");
-    Serial.print(ax); Serial.print(" "); Serial.print(ay); Serial.print(" "); Serial.print(az); Serial.print(" ");
-    Serial.print(gx); Serial.print(" "); Serial.print(gy); Serial.print(" "); Serial.print(gz); Serial.print(" ");
-    Serial.print(inputL); Serial.print(" "); Serial.println(inputR);
+    
+    if (telemetryMode == 2) {
+        // COM Mode
+        Serial.print("f;");
+        Serial.print(poseX); Serial.print(";"); 
+        Serial.print(poseY); Serial.print(";"); 
+        Serial.print(poseTheta); Serial.print(";");
+        Serial.print(inputL); Serial.print(";"); 
+        Serial.println(inputR);
+    } else if (telemetryMode == 1) {
+        // TEST Mode
+        Serial.println("---");
+        Serial.print("Pose: [x: "); Serial.print(poseX); 
+        Serial.print(", y: "); Serial.print(poseY); 
+        Serial.print(", th: "); Serial.print(poseTheta); Serial.println("]");
+        Serial.print("RPM:  [L: "); Serial.print(inputL); 
+        Serial.print(", R: "); Serial.print(inputR); Serial.println("]");
+    }
 }
 
 /* --- HOST COMMUNICATIONS --- */
@@ -128,6 +189,10 @@ void handleSerial() {
             float targetR = v + (w * WHEEL_BASE / 2.0);
             setpointL = (targetL * 60.0) / (PI * WHEEL_DIAMETER);
             setpointR = (targetR * 60.0) / (PI * WHEEL_DIAMETER);
+            
+            // Clamp setpoints to physical limits
+            setpointL = constrain(setpointL, -MAX_RPM, MAX_RPM);
+            setpointR = constrain(setpointR, -MAX_RPM, MAX_RPM);
         }
         else if (cmd == 'd' && currentMode == MODE_DIRECT) {
             float pwm_l = Serial.parseFloat();
@@ -138,6 +203,14 @@ void handleSerial() {
         else if (cmd == 's') { 
             currentMode = MODE_IDLE; 
             stopMotors(); 
+        }
+        else if (cmd == 'r') {
+            poseX = 0;
+            poseY = 0;
+            poseTheta = 0;
+        }
+        else if (cmd == 't') {
+            telemetryMode = Serial.parseInt();
         }
     }
 }
@@ -153,14 +226,21 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(L_ENCA), isrLeft, CHANGE);
     attachInterrupt(digitalPinToInterrupt(R_ENCA), isrRight, CHANGE);
 
+    // Prevent loop blocking if serial data is incomplete
+    Serial.setTimeout(10);
+
     lcd.init(); lcd.backlight();
-    lcd.createChar(0, eyeOpen); lcd.createChar(1, eyeBlink);
-    imu.initialize();
+    lcd.createChar(0, eyeOpenTL); lcd.createChar(1, eyeOpenTR);
+    lcd.createChar(2, eyeOpenBL); lcd.createChar(3, eyeOpenBR);
+    lcd.createChar(4, eyeBlinkTL); lcd.createChar(5, eyeBlinkTR);
+    lcd.createChar(6, eyeBlinkBL); lcd.createChar(7, eyeBlinkBR);
 
     pidL.SetOutputLimits(-255, 255);
     pidR.SetOutputLimits(-255, 255);
     pidL.SetMode(AUTOMATIC);
     pidR.SetMode(AUTOMATIC);
+    pidL.SetSampleTime(PID_SAMPLE_TIME);
+    pidR.SetSampleTime(PID_SAMPLE_TIME);
 }
 
 void loop() {
@@ -177,10 +257,10 @@ void loop() {
             pidL.Compute();
             pidR.Compute();
             driveMotor(L_PWM, L_DIR1, L_DIR2, outputL, false);
-            driveMotor(R_PWM, R_DIR1, R_DIR2, outputR, true); // Motor R is INVERSE
+            driveMotor(R_PWM, R_DIR1, R_DIR2, outputR, true);
         }
         
-        sendFeedback();
+        if (telemetryMode > 0) sendFeedback();
         updateLCD();
     }
 }
