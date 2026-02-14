@@ -86,7 +86,7 @@ def main():
     print("  d <l> <r>   -> Direct Drive PWM (-255 to 255) [Mode 2 only]")
     print("                 Ex: d 100 100  (Forward)")
     print("  s           -> Stop (Force IDLE)")
-    print("  r           -> Reset Odometry (X=0, Y=0, Theta=0)"ls
+    print("  r           -> Reset Odometry (X=0, Y=0, Theta=0)")
     print("  t <mode>    -> Set Telemetry (0=OFF, 1=TEXT, 2=CSV)")
     print("Type 'exit' to quit.\n")
 
