@@ -27,12 +27,21 @@ def receive_data(ser, log_file):
                         if line.startswith("f;"):
                             try:
                                 # Format: f;poseX;poseY;poseTheta;inputL;inputR
+                                # OR:     f;poseX;poseY;poseTheta;ax;ay;az;gx;gy;gz;inputL;inputR
                                 parts = line.split(';')
-                                if len(parts) >= 6:
+                                if len(parts) == 6:
                                     px, py, pth = float(parts[1]), float(parts[2]), float(parts[3])
                                     rl, rr = float(parts[4]), float(parts[5])
                                     
                                     decoded = f"Pose({px:.2f}, {py:.2f}, {pth:.2f}) RPM({rl:.1f}, {rr:.1f})"
+                                    log_file.write(f"{timestamp};RX;{decoded}\n")
+                                elif len(parts) >= 12:
+                                    px, py, pth = float(parts[1]), float(parts[2]), float(parts[3])
+                                    ax, ay, az = int(parts[4]), int(parts[5]), int(parts[6])
+                                    gx, gy, gz = int(parts[7]), int(parts[8]), int(parts[9])
+                                    rl, rr = float(parts[10]), float(parts[11])
+                                    
+                                    decoded = f"Pose({px:.2f}, {py:.2f}, {pth:.2f}) IMU(A:{ax},{ay},{az} G:{gx},{gy},{gz}) RPM({rl:.1f}, {rr:.1f})"
                                     log_file.write(f"{timestamp};RX;{decoded}\n")
                                 else:
                                     log_file.write(f"{timestamp};RX;{line}\n")
