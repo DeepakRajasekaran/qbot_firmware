@@ -25,6 +25,8 @@ void stopMotors() {
     analogWrite(L_PWM, 0); analogWrite(R_PWM, 0);
     setpointL = 0; setpointR = 0;
     outputL = 0;   outputR = 0;
+    pidL.SetMode(MANUAL); pidL.SetMode(AUTOMATIC);
+    pidR.SetMode(MANUAL); pidR.SetMode(AUTOMATIC);
 }
 
 void driveMotor(int pwmPin, int d1, int d2, float val, bool inverse) {
@@ -254,8 +256,21 @@ void loop() {
         processOdometry(dt);
         
         if (currentMode == MODE_VELOCITY) {
-            pidL.Compute();
-            pidR.Compute();
+            if (abs(setpointL) < 0.01 && abs(inputL) < 5.0) {
+                outputL = 0;
+                pidL.SetMode(MANUAL);
+                pidL.SetMode(AUTOMATIC);
+            } else {
+                pidL.Compute();
+            }
+
+            if (abs(setpointR) < 0.01 && abs(inputR) < 5.0) {
+                outputR = 0;
+                pidR.SetMode(MANUAL);
+                pidR.SetMode(AUTOMATIC);
+            } else {
+                pidR.Compute();
+            }
             driveMotor(L_PWM, L_DIR1, L_DIR2, outputL, false);
             driveMotor(R_PWM, R_DIR1, R_DIR2, outputR, true);
         }
